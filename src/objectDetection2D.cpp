@@ -95,22 +95,28 @@ void detectObjects(cv::Mat& img, std::vector<BoundingBox>& bBoxes, float confThr
         bBoxes.push_back(bBox);
     }
     
+
     // show results
     if(bVis) {
         
         cv::Mat visImg = img.clone();
         for(auto it=bBoxes.begin(); it!=bBoxes.end(); ++it) {
             
+
             // Draw rectangle displaying the bounding box
             int top, left, width, height;
             top = (*it).roi.y;
             left = (*it).roi.x;
             width = (*it).roi.width;
             height = (*it).roi.height;
+            int id = (*it).boxID;
+
             cv::rectangle(visImg, cv::Point(left, top), cv::Point(left+width, top+height),cv::Scalar(0, 255, 0), 2);
             
             string label = cv::format("%.2f", (*it).confidence);
-            label = classes[((*it).classID)] + ":" + label;
+            // label = classes[((*it).classID)] + ":" + label + " (box:" + (*it).boxID +")";
+            // add bonding box id to the label
+            label = classes[((*it).classID)] + ":" + label + ":" + std::to_string(id);
         
             // Display label at the top of the bounding box
             int baseLine;

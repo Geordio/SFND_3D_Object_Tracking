@@ -22,6 +22,10 @@ struct BoundingBox { // bounding box around a classified object (contains both 2
     std::vector<LidarPoint> lidarPoints; // Lidar 3D points which project into 2D image roi
     std::vector<cv::KeyPoint> keypoints; // keypoints enclosed by 2D roi
     std::vector<cv::DMatch> kptMatches; // keypoint matches enclosed by 2D roi
+
+    // added in order to tell if the keypoints have been allocated to the bounding boxes
+    // helps with processing the first frame and avoids reprocessing
+    bool keyPtsAllocated = false;
 };
 
 struct DataFrame { // represents the available sensor information at the same time instance
@@ -35,6 +39,10 @@ struct DataFrame { // represents the available sensor information at the same ti
 
     std::vector<BoundingBox> boundingBoxes; // ROI around detected objects in 2D image coordinates
     std::map<int,int> bbMatches; // bounding box matches between previous and current frame
+
+        // added in order to tell if the keypoints have been allocated to the bounding boxes
+    // helps with processing the first frame and avoids reprocessing
+    bool keyPtsAllocatedToBoxes = false;
 };
 
 #endif /* dataStructures_h */
