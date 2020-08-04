@@ -178,6 +178,8 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         cout << "Matches size: " << matches.size() << endl;
         cout << "prevFrame Kpts size: " << prevFrame.keypoints.size() << endl;
         cout << "currFrame Kpts size: " << currFrame.keypoints.size() << endl;
+        cout << "prevFrame no of Bbox: " << prevFrame.boundingBoxes.size() << endl;
+        cout << "currFrame no of Bbox: " << currFrame.boundingBoxes.size() << endl;
     }
 
     vector<int> trainingIds;
@@ -209,6 +211,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     }
     bDebug = true;
 
+    cout << "done initial analysis" << endl;
     // cv::waitKey(0);
     int cFpointsInMultiBBoxes = 0;
     int cFpointsInNoBox = 0;
@@ -255,8 +258,8 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
                     // cout << "Prev Frame found in box: " << pFBBox.boxID << endl;
                     pFCandidateBoxes++;
 
-                    cout << "Allocating keypoints in previous frame" << endl;
-                    pFBBox.keypoints.push_back(prevFrame.keypoints[match.trainIdx]);
+                    // cout << "Allocating keypoints in previous frame" << endl;
+                    pFBBox.keypoints.push_back(prevFrame.keypoints[match.queryIdx]);
                 }
                 // cFCandidateBoxList.push_back()
             }
@@ -291,6 +294,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
                 cFBBox.keypoints.push_back(currFrame.keypoints[match.trainIdx]);
             }
         }
+
         currFrame.keyPtsAllocatedToBoxes = true;
         // cout << "CF candidate boxes: " << to_string(cFCandidateBoxes) << endl;
 
@@ -315,26 +319,104 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     // could combine allocating to boxes and comapring into one set of loops
 
     // process each box in turn and find the best match in other frame.
-    // for (auto &match : matches)
-    // {
-    // for (auto &cFBBox : currFrame.boundingBoxes)
-    // {
-    //     for (auto &pFBBox : prevFrame.boundingBoxes)
-    //     {
-    //         for (auto kpt : cFBBox.keypoints)
-    //         {
-    //             if (pFBBox.roi.contains(kpt))
-    //             {
-    //                             // if (!trainingIds.find(match.trainIdx))
-    //         //     trainingIds.push_back(match.trainIdx);
-    //         // else
-    //         // {
-    //         //     cout << "Training ID found more than once: " << match.trainIdx << endl;
-    //         // }
-    //             }
-    //         }
-    //     }
-    // }
+
+    int mostMatches = 0;
+    cout << "--------------REVISED-----------" << endl;
+    vector<int> cFCandidateBoxList;
+
+    vector<int> boxWithMostMatches(prevFrame.boundingBoxes.size(), 0);
+    match_idx = 0;
+
+    vector<int> pfBoxMatches(prevFrame.boundingBoxes.size(), 0);
+
+    // 2d vector  vector (rowSize, vector(columnsize, init value))
+    vector<vector<int>> vecOfMatchCnts(currFrame.boundingBoxes.size(), pfBoxMatches);
+
+    cout << "vecOfMatchCnts size: " << vecOfMatchCnts.size() << ", " << vecOfMatchCnts[0].size() << endl;
+
+    cv::waitKey(0);
+    for (auto &match : matches)
+    {
+        for (auto &cFBBox : currFrame.boundingBoxes)
+        {
+
+            // cout << "processing box: " << cFBBox.boxID << endl;
+            // cout << "processing match: " << match_idx << endl;
+            // vector<int> thisBoxToOtherBoxMatchCnt;
+
+            // iterate through the current boxes. for each current box, populate an element in a row.
+
+            if (cFBBox.roi.contains(currFrame.keypoints[match.trainIdx].pt))
+            {
+
+                // vector<int> thisBoxToOtherBoxMatchCnt;
+                // cFCandidateBoxList.push_back(currFrame.keypoints[match.trainIdx]);
+                // cout << "curr Frame found in box: " << pFBBox.boxID << endl;
+                // cFCandidateBoxes++;
+
+                // cout << "Allocating keypoints in current frame" << endl;
+                // cFBBox.keypoints.push_back(currFrame.keypoints[match.trainIdx]);
+
+                // iterate through previous boxes
+                for (auto &pFBBox : prevFrame.boundingBoxes)
+                {
+
+                    // iterate through the previous boxes. for each previous box, populate an element in a column
+                    if (pFBBox.roi.contains(prevFrame.keypoints[match.queryIdx].pt))
+                    {
+                        // increment the count of matching points for these 2 boxes.
+                        vecOfMatchCnts[cFBBox.boxID][pFBBox.boxID]++;
+
+                        // cout << "Prev Frame found in box: " << pFBBox.boxID << endl;
+                        // pFCandidateBoxes++;
+
+                        // cout << "Allocating keypoints in previous frame" << endl;
+                        // pFBBox.keypoints.push_back(prevFrame.keypoints[match.queryIdx]);
+                    }
+                    // cFCandidateBoxList.push_back()
+                }
+            }
+            match_idx++;
+        }
+    } // end of matches
+
+    // debug
+    bDebug = true;
+    if (bDebug)
+    {
+        // vector<vector<int>> vecOfMatchCnts(currFrame.boundingBoxes.size(), vector<int>(prevFrame.boundingBoxes.size(), 0));        cout << "-------------------------" << endl;
+        for (int i = 0; i < currFrame.boundingBoxes.size(); i++)
+        {
+            for (int j = 0; j < prevFrame.boundingBoxes.size(); j++)
+            {
+                cout << vecOfMatchCnts[i][j] << "\t";
+            }
+            cout << endl;
+        }
+        cv::waitKey(0);
+    }
+    // iterate through the count of matches for boxes in the current frame
+    // find index of the max value
+    cout << "cf box\tpf box" << endl;
+    for (int i = 0; i < currFrame.boundingBoxes.size(); i++)
+    {
+        // for (int j = 0; j < prevFrame.boundingBoxes.size(); j++)
+        // {
+        //     // cout << vecOfMatchCnts[i][j] << "\t";
+        // }
+        // // cout << endl;
+        // // int maxElement = *std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end());
+        // // find the index of the max value
+                int maxValIndex = std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end()) - vecOfMatchCnts[i].begin();
+bbBestMatches.insert(pair<int, int>(i, maxValIndex));
+
+c
+
+        // cout << "max index: " << maxElementIndex << endl;
+
+        cout << i << "\t" << maxValIndex << endl;
+    }
+    cv::waitKey(0);
 
     for (auto pFBBox : prevFrame.boundingBoxes)
     {
