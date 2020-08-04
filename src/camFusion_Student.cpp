@@ -155,6 +155,72 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
     // ...
+    // based on the workshop from the lesson, which does not contain any filtering (other than removing points outside ego lane)
+    // TODO, add outlier filtering based on euclidean distance
+    // based on the project requirements, clustering seems like overkill, going to use stddev
+
+    // calculate the stddev of x values.
+
+    float var = 0;
+    float sd = 0;
+    // for (n = 0; n < numPoints; n++)
+    // {
+    //     var += (Array[n] - mean) * (Array[n] - mean);
+    // }
+    // var /= numPoints;
+    // sd = sqrt(var);
+
+    // get the mean
+    float sum_x = 0;
+    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
+    {
+        sum_x += it->x;
+    }
+    float mean_x = sum_x / lidarPointsCurr.size();
+    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
+    {
+        var += pow((it->x - mean_x), 2);
+    }
+    sd = sqrt(var);
+
+    cout << "mean x: " << mean_x << ", stddev: " << sd << endl;
+
+    // auxiliary variables
+    double dT = 0.1;        // time between two measurements in seconds
+    double laneWidth = 4.0; // assumed width of the ego lane
+
+    // find closest distance to Lidar points within ego lane
+    double minXPrev = 1e9, minXCurr = 1e9;
+    for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
+    {
+        // filter out points outside ego lane
+        if (abs(it->y) <= laneWidth / 2.0)
+        {
+            minXPrev = minXPrev > it->x ? it->x : minXPrev;
+        }
+    }
+
+    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
+    {
+        if (fabs(it->x - mean_x) < 3 * sd)
+        {
+            if (abs(it->y) <= laneWidth / 2.0)
+            { // 3D point within ego lane?
+                minXCurr = minXCurr > it->x ? it->x : minXCurr;
+            }
+        }
+        else
+        {
+            cout << "outlier: " << it->x << endl;
+        }
+        
+    }
+
+    // compute TTC from both measurements
+    TTC = minXCurr * dT / (minXPrev - minXCurr);
+
+    if (bDebug)
+        cout << "TTC: " << TTC << endl;
 }
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
@@ -407,10 +473,8 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         // // cout << endl;
         // // int maxElement = *std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end());
         // // find the index of the max value
-                int maxValIndex = std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end()) - vecOfMatchCnts[i].begin();
-bbBestMatches.insert(pair<int, int>(i, maxValIndex));
-
-c
+        int maxValIndex = std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end()) - vecOfMatchCnts[i].begin();
+        bbBestMatches.insert(pair<int, int>(i, maxValIndex));
 
         // cout << "max index: " << maxElementIndex << endl;
 
