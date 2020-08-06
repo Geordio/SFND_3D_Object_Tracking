@@ -127,8 +127,8 @@ int main(int argc, const char *argv[])
         dataBuffer.push_back(frame);
 
         // add data buffer size management?
-        cout << "-----------------------------------------------------"<< endl;
-        cout << "#1 : LOAD IMAGE INTO BUFFER done: image no: " << imgIndex<< endl;
+        cout << "-----------------------------------------------------" << endl;
+        cout << "#1 : LOAD IMAGE INTO BUFFER done: image no: " << imgIndex << endl;
 
         /* DETECT & CLASSIFY OBJECTS */
 
@@ -151,6 +151,7 @@ int main(int argc, const char *argv[])
         loadLidarFromFile(lidarPoints, lidarFullFilename);
 
         // remove Lidar points based on distance properties
+        // Note that this makes filteringing in the LIDAR TTC method unnecessary....
         // working assumption is level road surface.
         float minZ = -1.5, maxZ = -0.9, minX = 2.0, maxX = 20.0, maxY = 2.0, minR = 0.1; // focus on ego lane
         cropLidarPoints(lidarPoints, minX, maxX, maxY, minZ, maxZ, minR);
@@ -163,13 +164,14 @@ int main(int argc, const char *argv[])
 
         // associate Lidar points with camera-based ROI
         float shrinkFactor = 0.10; // shrinks each bounding box by the given percentage to avoid 3D object merging at the edges of an ROI
-        clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
+        clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT, true);
 
         // Visualize 3D objects
-        bVis = false;
+        bVis = true;
         if (bVis)
         {
-            show3DObjects((dataBuffer.end() - 1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
+            // world size      image size
+            show3DObjects((dataBuffer.end() - 1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000));
         }
         bVis = false;
 
@@ -186,15 +188,20 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        string detectorType = "FAST";
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
             detKeypointsShiTomasi(keypoints, imgGray, false);
         }
-        else
+        else if (detectorType.compare("HARRIS") == 0)
         {
-            //...
+            detKeypointsHarris(keypoints, imgGray, false);
+        }
+        else // anything else, call the mdern implementations
+        {
+            // cout << "anything else" << endl;
+            detKeypointsModern(keypoints, imgGray, detectorType, false);
         }
 
         // optional : limit number of keypoints (helpful for debugging and learning)
@@ -219,7 +226,7 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
@@ -235,7 +242,7 @@ int main(int argc, const char *argv[])
             vector<cv::DMatch> matches;
             string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
             string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-            string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
+            string selectorType = "SEL_KNN";      // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
@@ -282,8 +289,10 @@ int main(int argc, const char *argv[])
                         prevBB = &(*it2);
                     }
                 }
+                cout << "currBox: " << currBB->boxID << " ,prevBox: " << prevBB->boxID << endl;
 
                 // compute TTC for current match
+                // this limits it to the lead vehicle as that is the only object represented by LIDAR points
                 if (currBB->lidarPoints.size() > 0 && prevBB->lidarPoints.size() > 0) // only compute TTC if we have Lidar points
                 {
                     //// STUDENT ASSIGNMENT
