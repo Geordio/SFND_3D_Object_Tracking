@@ -164,10 +164,10 @@ int main(int argc, const char *argv[])
 
         // associate Lidar points with camera-based ROI
         float shrinkFactor = 0.10; // shrinks each bounding box by the given percentage to avoid 3D object merging at the edges of an ROI
-        clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT, true);
+        clusterLidarWithROI((dataBuffer.end() - 1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = true;
+        bVis = false;
         if (bVis)
         {
             // world size      image size
@@ -276,7 +276,7 @@ int main(int argc, const char *argv[])
                 BoundingBox *prevBB, *currBB;
                 for (auto it2 = (dataBuffer.end() - 1)->boundingBoxes.begin(); it2 != (dataBuffer.end() - 1)->boundingBoxes.end(); ++it2)
                 {
-                    if (it1->second == it2->boxID) // check wether current match partner corresponds to this BB
+                    if (it1->second == it2->boxID) // check whether current match partner corresponds to this BB
                     {
                         currBB = &(*it2);
                     }
@@ -323,16 +323,21 @@ int main(int argc, const char *argv[])
                         string windowName = "Final Results : TTC";
                         cv::namedWindow(windowName, 4);
                         cv::imshow(windowName, visImg);
+
+                        // resize the image window
+                        cv::resizeWindow(windowName, 1242, 375);
                         cout << "Press key to continue to next frame" << endl;
                         cv::waitKey(0);
                     }
                     bVis = false;
 
                 } // eof TTC computation
-            }     // eof loop over all BB matches
+
+            } // eof loop over all BB matches
         }
 
     } // eof loop over all images
+    bDebug = false;
     if (bDebug)
     {
         for (auto datab : dataBuffer)

@@ -20,6 +20,9 @@ struct BoundingBox { // bounding box around a classified object (contains both 2
     double confidence; // classification trust
 
     std::vector<LidarPoint> lidarPoints; // Lidar 3D points which project into 2D image roi
+
+    std::vector<LidarPoint> lidarPointsFiltered; // Lidar 3D points which project into 2D image roi, that have had filtering applied   
+
     std::vector<cv::KeyPoint> keypoints; // keypoints enclosed by 2D roi
     std::vector<cv::DMatch> kptMatches; // keypoint matches enclosed by 2D roi
 

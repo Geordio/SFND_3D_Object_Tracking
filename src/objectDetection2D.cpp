@@ -157,18 +157,23 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
             //     cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, fontScale, cv::Scalar(0,0,0),1);
             // }
             bDebug = true;
-                        if (bDebug)
+            if (bDebug)
             {
-                if ((*it).roi.contains(cv::Point(625,255)))
+                if ((*it).roi.contains(cv::Point(625, 255)))
                 {
-cout << "target vehicle box ID: " <<  (*it).boxID << endl;
+                    cout << "target vehicle box ID: " << (*it).boxID << endl;
                 }
             }
+            bDebug = false;
         }
 
         string windowName = "Object classification";
         cv::namedWindow(windowName, 1);
         cv::imshow(windowName, visImg);
-        cv::waitKey(0); // wait for key to be pressed
+
+        if (bDebug)
+        {
+            cv::waitKey(0); // wait for key to be pressed
+        }
     }
 }
