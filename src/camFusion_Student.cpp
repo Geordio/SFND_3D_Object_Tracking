@@ -15,7 +15,7 @@ using namespace std;
 
 bool bDebug = true;
 bool bfilterViz = true;
-Logger logger1("log.txt"); 
+Logger logger1("log.txt");
 
 // Create groups of Lidar points whose projection into the camera falls into the same bounding box
 void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints, float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
@@ -290,14 +290,13 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
         int y = (-(i * lineSpacing) * imageSize.height / worldSize.height) + imageSize.height;
         cv::line(topviewImg, cv::Point(0, y), cv::Point(imageSize.width, y), cv::Scalar(255, 0, 0));
     }
-        // int y = (-xw * imageSize.height / worldSize.height) + imageSize.height;
-        // int x = (-yw * imageSize.width / worldSize.width) + imageSize.width / 2 + offset_x;
+    // int y = (-xw * imageSize.height / worldSize.height) + imageSize.height;
+    // int x = (-yw * imageSize.width / worldSize.width) + imageSize.width / 2 + offset_x;
 
     int ycurr = (-lineCurr * imageSize.height / worldSize.height) + imageSize.height;
     int yprev = (-linePrev * imageSize.height / worldSize.height) + imageSize.height;
     cv::line(topviewImg, cv::Point(0, ycurr), cv::Point(imageSize.width, ycurr), cv::Scalar(0, 255, 0));
     cv::line(topviewImg, cv::Point(0, yprev), cv::Point(imageSize.width, yprev), cv::Scalar(0, 0, 255));
-    cout << "Drawing fing line" << endl;
 
     // resized image as wasnt visible on my setup
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
@@ -337,7 +336,7 @@ void calculateSD(vector<float> data, float &stddev, float &var, float &mean)
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
     // ...
-  logger1.WriteLine("BIG FAT LOGGING");
+    //   logger1.WriteLine("BIG FAT LOGGING");
     // initial analysis of the how the matched points relate to each other
     vector<float> test{-5, 1, 8, 7, 2};
     float var = 0;
@@ -458,21 +457,24 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     // EOF STUDENT TASK
 }
 
+/// Filters Lidar points using a passed standard deviation
 void filterPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, float mean_x, float sd, double &minX)
 {
     double minXPrev = 1e9;
+    double threshold = 2 * sd;
+
     for (auto it = lidarPoints.begin(); it != lidarPoints.end(); ++it)
     {
-        if (abs(it->x - mean_x) < 2 * sd)
+        if (abs(it->x - mean_x) <= threshold)
         {
             lidarPointsFiltered.push_back(*it);
             minX = minX > it->x ? it->x : minX;
         }
         else
-        {   
+        {
             bDebug = false;
             if (bDebug)
-            cout << "outlier: " << it->x << endl;
+                cout << "outlier: " << it->x << endl;
         }
     }
     cout << "filtered points size: " << lidarPointsFiltered.size() << "minX: " << minX << endl;
@@ -481,12 +483,6 @@ void filterPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
-    // based on the workshop from the lesson, which does not contain any filtering (other than removing points outside ego lane)
-    // TODO, add outlier filtering based on euclidean distance
-    // based on the project requirements, clustering seems like overkill, going to use stddev
-
-    // calculate the stddev of x values.
 
     float var = 0;
     float sd_curr = 0;
@@ -528,22 +524,11 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     // current fram, and again as the previous frame.
     // TODO, fix if I get the chance
     double minXPrev = 1e9, minXCurr = 1e9;
-    // for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
+
+    std::vector<LidarPoint> lidarPointsCurrFiltered;
+    std::vector<LidarPoint> lidarPointsPrevFiltered;
+    // if (bfilterViz)
     // {
-    //     // only use points that are in the ego lane, skip any others
-    //     // not actually needed in this project as there is pre filtering in the main function
-    //     if (abs(it->y) <= laneWidth / 2.0)
-    //     {
-    //         // if the x value is less that the previously smallest x value then use the smaller value
-    //         minXPrev = minXPrev > it->x ? it->x : minXPrev;
-    //     }
-    // }
-        std::vector<LidarPoint> lidarPointsCurrFiltered;
-        std::vector<LidarPoint> lidarPointsPrevFiltered;
-    if (bfilterViz)
-    {
-
-
         filterPoints(lidarPointsPrev, lidarPointsPrevFiltered, mean_x_prev, sd_prev, minXPrev);
         filterPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, sd_curr, minXCurr);
         cout << "prev points size: " << lidarPointsPrev.size() << ", prev filtered points size: " << lidarPointsPrevFiltered.size() << endl;
@@ -552,14 +537,14 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
         cout << "current and prev x: " << minXCurr << ", " << minXPrev << endl;
         // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, mean_x_prev, true, windowName);
-                showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, minXCurr, minXPrev, true, windowName);
+        showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, minXCurr, minXPrev, true, windowName);
         // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, true,windowName);
         windowName = "LIDAR POINTS - prev";
         // showLidarPoints(lidarPointsPrev, lidarPointsPrevFiltered, true,windowName);
-    }
+    // }
 
     float temp = 0;
-// recalculate teh mean on the filtered points 
+    // recalculate teh mean on the filtered points
     errorsCurr.clear();
     for (auto it = lidarPointsCurrFiltered.begin(); it != lidarPointsCurrFiltered.end(); ++it)
     {
@@ -572,53 +557,21 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     double mean_x_curr_filter = temp / errorsCurr.size();
 
     temp = 0;
-    errorsCurr.clear();
+    errorsPrev.clear();
     for (auto it = lidarPointsPrevFiltered.begin(); it != lidarPointsPrevFiltered.end(); ++it)
     {
-        errorsCurr.push_back(it->x);
+        errorsPrev.push_back(it->x);
     }
     for (auto element : errorsCurr)
     {
         temp += element;
     }
-    double mean_x_prev_filter = temp / errorsCurr.size();
+    double mean_x_prev_filter = temp / errorsPrev.size();
 
-    // // TODO, may as well just do this in the filterPoints method.
-    // for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
-    // {
-    //     if (abs(it->x - mean_x_prev) < 3 * sd_prev)
-    //     {
-    //         // only use points that are in the ego lane, skip any others
-    //         if (abs(it->y) <= laneWidth / 2.0)
-    //         { // 3D point within ego lane?
-    //             minXPrev = minXPrev > it->x ? it->x : minXPrev;
-    //         }
-    //     }
-    //     else
-    //     {
-    //         cout << "outlier: " << it->x << endl;
-    //     }
-    // }
-
-    // for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
-    // {
-    //     if (abs(it->x - mean_x_curr) < 3 * sd_curr)
-    //     {
-    //         // only use points that are in the ego lane, skip any others
-    //         if (abs(it->y) <= laneWidth / 2.0)
-    //         { // 3D point within ego lane?
-    //             minXCurr = minXCurr > it->x ? it->x : minXCurr;
-    //         }
-    //     }
-    //     else
-    //     {
-    //         cout << "outlier: " << it->x << endl;
-    //     }
-    // }
 
     // compute TTC from both measurements
-    TTC = minXCurr * dT / (minXPrev - minXCurr);
-
+    // TTC = minXCurr * dT / (minXPrev - minXCurr);
+    TTC = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
     double TTCmean = mean_x_curr * dT / (mean_x_prev - mean_x_curr);
     double TTCmeanfilt = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
 
@@ -628,7 +581,6 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
         cout << "TTC: " << TTC << "\tminXCurr: " << minXCurr << "\tminXPrev: " << minXPrev << endl;
         cout << "TTCmean: " << TTCmean << "\tmean_x_curr: " << mean_x_curr << "\tmean_x_prev: " << mean_x_prev << endl;
         cout << "TTCmeanfiltered: " << TTCmeanfilt << "\tmean_x_curr: " << mean_x_curr_filter << "\tmean_x_prev: " << mean_x_prev_filter << endl;
-
     }
 }
 
@@ -661,12 +613,8 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
 
     int mostMatches = 0;
     cout << "--------------REVISED-----------" << endl;
-    // vector<int> cFCandidateBoxList;
-    // vector<int> boxWithMostMatches(prevFrame.boundingBoxes.size(), 0);
-    // match_idx = 0;
 
-
-// create a 2 d vector that can be used to count the matches of each combination of bounding boxes
+    // create a 2 d vector that can be used to count the matches of each combination of bounding boxes
     vector<int> pfBoxMatches(prevFrame.boundingBoxes.size(), 0);
     // 2d vector  vector (rowSize, vector(columnsize, init value))
     vector<vector<int>> vecOfMatchCnts(currFrame.boundingBoxes.size(), pfBoxMatches);
@@ -676,7 +624,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     if (bDebug)
         cv::waitKey(0);
 
-// iterate through the matches
+    // iterate through the matches
     for (auto &match : matches)
     {
         for (auto &cFBBox : currFrame.boundingBoxes)
@@ -723,10 +671,10 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         int maxValue = *std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end());
         // bbBestMatches.insert(pair<int, int>(i, maxValIndex));
         bbBestMatches.insert(pair<int, int>(maxValIndex, i));
-
-        // cout << "max index: " << maxElementIndex << endl;
-
-        cout << i << "\t" << maxValIndex << "\t" << maxValue <<  endl;
+        if (bDebug)
+        {
+            cout << i << "\t" << maxValIndex << "\t" << maxValue << endl;
+        }
     }
     bDebug = false;
     if (bDebug)

@@ -58,11 +58,6 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         {
             if ((*it)[0].distance < minDescDistRatio * (*it)[1].distance)
             {
-                // if ((*it)[0].trainIdx == 9)
-                // matches.push_back((*it)[0]);
-                //                 if ((*it)[0].trainIdx == 14)
-                // matches.push_back((*it)[0]);
-                //                 if ((*it)[0].trainIdx == 3)
                 matches.push_back((*it)[0]);
             }
         }
@@ -75,16 +70,6 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         }
         
         // cout << "SEL_KNN\t: total keypts matches: " << knn_matches.size() << "\t remaining: "  << matches.size() << endl;
-    }
-
-    bool matcherDebug = false;
-    if (matcherDebug) {
-
-        cout << endl << "Matcher sandbox" << endl;
-        for (auto match : matches) {
-            cout << "training id: " << match.trainIdx;
-              cout << " query id: " << match.queryIdx << endl;          
-        }
     }
 }
 
