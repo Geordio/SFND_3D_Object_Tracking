@@ -9,10 +9,13 @@
 #include "dataStructures.h"
 #include <unordered_set>
 
+#include "logger.h"
+
 using namespace std;
 
 bool bDebug = true;
 bool bfilterViz = true;
+Logger logger1("log.txt"); 
 
 // Create groups of Lidar points whose projection into the camera falls into the same bounding box
 void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints, float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
@@ -334,7 +337,7 @@ void calculateSD(vector<float> data, float &stddev, float &var, float &mean)
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
     // ...
-
+  logger1.WriteLine("BIG FAT LOGGING");
     // initial analysis of the how the matched points relate to each other
     vector<float> test{-5, 1, 8, 7, 2};
     float var = 0;

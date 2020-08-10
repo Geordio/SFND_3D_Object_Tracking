@@ -20,11 +20,25 @@
 #include "lidarData.hpp"
 #include "camFusion.hpp"
 
+#include "logger.h"
+
 using namespace std;
+// using Logging;
 
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[])
 {
+  // compiler error as no std ctor exists
+  Logger logger();  
+   
+  // calls parametrized ctor
+  Logger logger1("log.txt");    
+ 
+  logger1.WriteLine("Hello");
+  logger1.WriteLine("World");
+  
+
+
     /* INIT VARIABLES AND DATA STRUCTURES */
     bool bDebug = true;
     // data location
@@ -129,6 +143,7 @@ int main(int argc, const char *argv[])
         // add data buffer size management?
         cout << "-----------------------------------------------------" << endl;
         cout << "#1 : LOAD IMAGE INTO BUFFER done: image no: " << imgIndex << endl;
+
 
         /* DETECT & CLASSIFY OBJECTS */
 
