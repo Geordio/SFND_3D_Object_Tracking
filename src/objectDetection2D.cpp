@@ -1,4 +1,3 @@
-
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -36,7 +35,7 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
     cv::Scalar mean = cv::Scalar(0, 0, 0);
     bool swapRB = false;
     bool crop = false;
-    bool bDebug = true;
+    bool bDebug = false;
     cv::dnn::blobFromImage(img, blob, scalefactor, size, mean, swapRB, crop);
 
     // Get names of output layers
@@ -51,6 +50,8 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
     // invoke forward propagation through network
     net.setInput(blob);
     net.forward(netOutput, names);
+
+
 
     // Scan through all bounding boxes and keep only the ones with high confidence
     vector<int> classIds;
@@ -156,7 +157,7 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
             // {
             //     cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, fontScale, cv::Scalar(0,0,0),1);
             // }
-            bDebug = true;
+            bDebug = false;
             if (bDebug)
             {
                 if ((*it).roi.contains(cv::Point(625, 255)))

@@ -258,7 +258,7 @@ int main(int argc, const char *argv[])
                 float confThreshold = 0.2;
                 float nmsThreshold = 0.4;
 
-                bVis = true;
+                bVis = false;
                 // run yolo
                 detectObjects((dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->boundingBoxes, confThreshold, nmsThreshold,
                               yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights, bVis);
@@ -458,7 +458,7 @@ int main(int argc, const char *argv[])
                                 if (!bProcessAll)
                                 {
                                     cout << "Press key to continue to next frame" << endl;
-                                    cv::waitKey(0);
+                                    cv::waitKey(1);
                                 }
                             }
                             bVis = false;

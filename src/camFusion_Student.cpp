@@ -17,6 +17,10 @@ bool bDebug = true;
 bool bfilterViz = true;
 Logger logger1("log.txt");
 
+// temporary counter for filenaming for report
+int reportCnt = 0;
+bool bReport = false;
+
 // Create groups of Lidar points whose projection into the camera falls into the same bounding box
 void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints, float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
 {
@@ -55,7 +59,6 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
             {
                 enclosingBoxes.push_back(it2);
             }
-
         } // eof loop over all bounding boxes
 
         // check whether point has been enclosed by one or by multiple boxes
@@ -151,9 +154,6 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
     // display image
     string windowName = "3D Objects";
-    // cv::namedWindow(windowName, 1);
-    // cv::imshow(windowName, topviewImg);
-
     // resized image as wasnt visible on my setup
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     cv::imshow(windowName, topviewImg);
@@ -198,13 +198,6 @@ void plotPoints(cv::Mat &topviewImg, std::vector<LidarPoint> &lidarPoints, cv::S
 
     // draw enclosing rectangle
     cv::rectangle(topviewImg, cv::Point(left, top), cv::Point(right, bottom), cv::Scalar(0, 0, 0), 2);
-
-    // // augment object with some key data
-    // char str1[200], str2[200];
-    // // sprintf(str1, "id=%d, #pts=%d", it1->boxID, (int)it1->lidarPoints.size());
-    // putText(topviewImg, str1, cv::Point2f(left - 250, bottom + 50), cv::FONT_ITALIC, 2, currColor);
-    // sprintf(str2, "xmin=%2.2f m, yw=%2.2f m", xwmin, ywmax - ywmin);
-    // putText(topviewImg, str2, cv::Point2f(left - 250, bottom + 125), cv::FONT_ITALIC, 2, currColor);
 }
 
 // quick and dirty plot of Lidar points including filtered ones, for purpose of report
@@ -248,7 +241,8 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     cv::imshow(windowName, topviewImg);
     cv::resizeWindow(windowName, 600, 600);
-    bWait = false;
+
+    // bWait = false;
     if (bWait)
     {
         cv::waitKey(0); // wait for key to be pressed
@@ -256,7 +250,7 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
     bWait = false;
 }
 
-void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, double lineCurr, double linePrev, bool bWait, string windowName)
+void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, double lineCurr, double linePrev, double lineOrig, bool bWait, string windowName)
 {
     // create topview image
     cv::Size imageSize = cv::Size(2000, 2000);
@@ -289,19 +283,28 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
     {
         int y = (-(i * lineSpacing) * imageSize.height / worldSize.height) + imageSize.height;
         cv::line(topviewImg, cv::Point(0, y), cv::Point(imageSize.width, y), cv::Scalar(255, 0, 0));
-    }
-    // int y = (-xw * imageSize.height / worldSize.height) + imageSize.height;
-    // int x = (-yw * imageSize.width / worldSize.width) + imageSize.width / 2 + offset_x;
+    };
 
     int ycurr = (-lineCurr * imageSize.height / worldSize.height) + imageSize.height;
     int yprev = (-linePrev * imageSize.height / worldSize.height) + imageSize.height;
+    int yorig = (-lineOrig * imageSize.height / worldSize.height) + imageSize.height;
     cv::line(topviewImg, cv::Point(0, ycurr), cv::Point(imageSize.width, ycurr), cv::Scalar(0, 255, 0));
     cv::line(topviewImg, cv::Point(0, yprev), cv::Point(imageSize.width, yprev), cv::Scalar(0, 0, 255));
+    cv::line(topviewImg, cv::Point(0, yorig), cv::Point(imageSize.width, yorig), cv::Scalar(245, 66, 230));
 
     // resized image as wasnt visible on my setup
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     cv::imshow(windowName, topviewImg);
     cv::resizeWindow(windowName, 600, 600);
+
+    bReport = true;
+    if (bReport)
+    {
+
+        imwrite("lidar_points" + std::to_string(reportCnt) + ".jpg", topviewImg);
+        reportCnt++;
+    }
+
     bWait = false;
     if (bWait)
     {
@@ -335,16 +338,11 @@ void calculateSD(vector<float> data, float &stddev, float &var, float &mean)
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
-    //   logger1.WriteLine("BIG FAT LOGGING");
     // initial analysis of the how the matched points relate to each other
-    vector<float> test{-5, 1, 8, 7, 2};
+
     float var = 0;
-    ;
     float stddev = 0;
     float mean = 0;
-    calculateSD(test, stddev, var, mean);
-    cout << "SD: " << stddev << " ," << var << endl;
 
     bDebug = false;
     if (bDebug)
@@ -353,54 +351,45 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
     // float point_euc_dist = 0;
     float sum_euc_dist = 0;
     vector<float> errors;
+
+    // iterate over the kptMatches, calculating the euclidean distance between the corresponding keypoint matches
     for (auto match : kptMatches)
     {
         // filtering
         // calculate the euclidean distance between the matched points..
-
         cv::Point2f diff = kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt;
         float point_euc_dist = cv::sqrt(diff.x * diff.x + diff.y * diff.y);
         // sum_euc_dist += point_euc_dist;
         errors.push_back(point_euc_dist);
-
-        // cout << "manually calc ed: " << point_euc_dist << ", match distance: " << match.distance << endl;
     }
-    var = 0;
-    ;
-    stddev = 0;
+
     calculateSD(errors, stddev, var, mean);
     cout << "SD: " << stddev << " ," << var << endl;
-
-    // float mean_euc_dist = sum_euc_dist / kptMatches.size();
-    // cout << "********************************" << endl;
 
     bDebug = false;
     if (bDebug)
         cv::waitKey(0);
 
-    // // calc std dev
-    // for (match : kptMatches)
-    // {
-    //     var += pow((it->x - mean_x), 2);
-    // }
-    // sd = sqrt(var);
+    double threshold = 2.5 * stddev;
 
+    // iterate over the matches again, this time filter and allocate the points to the corresponding bounding box
+
+    // TODO The std deviation is over all matches not the ones in each box...... ffs SORT THIS OUT
     for (auto match : kptMatches)
     {
-
         // filtering
         // calculate the euclidean distance between the matched points..
-
         cv::Point2f diff = kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt;
         float euclidean_dist = cv::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-        // if (euclidean_dist > 3 * stddev
-
-        if (boundingBox.roi.contains(kptsCurr[match.trainIdx].pt))
+        // if (euclidean_dist < )
+        if (abs(euclidean_dist - mean) <= threshold)
         {
-
-            boundingBox.keypoints.push_back(kptsCurr[match.trainIdx]);
-            boundingBox.kptMatches.push_back(match);
+            if (boundingBox.roi.contains(kptsCurr[match.trainIdx].pt))
+            {
+                boundingBox.keypoints.push_back(kptsCurr[match.trainIdx]);
+                boundingBox.kptMatches.push_back(match);
+            }
         }
     }
 }
@@ -413,14 +402,12 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
     for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
     { // outer kpt. loop
-
         // get current keypoint and its matched partner in the prev. frame
         cv::KeyPoint kpOuterCurr = kptsCurr.at(it1->trainIdx);
         cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
 
         for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
-        { // inner kpt.-loop
-
+        {                           // inner kpt.-loop
             double minDist = 100.0; // min. required distance
 
             // get next keypoint and its matched partner in the prev. frame
@@ -433,7 +420,6 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 
             if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
             { // avoid division by zero
-
                 double distRatio = distCurr / distPrev;
                 distRatios.push_back(distRatio);
             }
@@ -461,7 +447,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void filterPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, float mean_x, float sd, double &minX)
 {
     double minXPrev = 1e9;
-    double threshold = 2 * sd;
+    double threshold = 2.5 * sd;
 
     for (auto it = lidarPoints.begin(); it != lidarPoints.end(); ++it)
     {
@@ -507,44 +493,28 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     }
     calculateSD(errorsPrev, sd_prev, var, mean_x_prev);
     bDebug = false;
-    if (bDebug)
-    {
-        cout << "refactored mean x: " << mean_x_prev << ", stddev: " << sd_prev << endl;
-        cout << "------------------------------" << endl;
-        cv::waitKey(0);
-    }
+
     // auxiliary variables
     double dT = 0.1;        // time between two measurements in seconds
     double laneWidth = 4.0; // assumed width of the ego lane
 
     // find closest distance to Lidar points within ego lane
 
-    // 1st, the previous frame
-    // note that the way this is implemeneted means that the previous frame is calclauted twice, once when it was the
-    // current fram, and again as the previous frame.
-    // TODO, fix if I get the chance
     double minXPrev = 1e9, minXCurr = 1e9;
 
+    // create new vectors to store the filtered points.
+    // at this stage code is optimised for visualising so I am using additional vectors rather than reusing the original ones
     std::vector<LidarPoint> lidarPointsCurrFiltered;
     std::vector<LidarPoint> lidarPointsPrevFiltered;
-    // if (bfilterViz)
-    // {
-        filterPoints(lidarPointsPrev, lidarPointsPrevFiltered, mean_x_prev, sd_prev, minXPrev);
-        filterPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, sd_curr, minXCurr);
-        cout << "prev points size: " << lidarPointsPrev.size() << ", prev filtered points size: " << lidarPointsPrevFiltered.size() << endl;
-        cout << "curr points size: " << lidarPointsCurr.size() << ", curr filtered points size: " << lidarPointsCurrFiltered.size() << endl;
-        string windowName = "LIDAR POINTS - curr";
 
-        cout << "current and prev x: " << minXCurr << ", " << minXPrev << endl;
-        // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, mean_x_prev, true, windowName);
-        showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, minXCurr, minXPrev, true, windowName);
-        // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, true,windowName);
-        windowName = "LIDAR POINTS - prev";
-        // showLidarPoints(lidarPointsPrev, lidarPointsPrevFiltered, true,windowName);
-    // }
+    // run filtering to remover outliers
+    filterPoints(lidarPointsPrev, lidarPointsPrevFiltered, mean_x_prev, sd_prev, minXPrev);
+    filterPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, sd_curr, minXCurr);
+    string windowName = "LIDAR POINTS - curr";
+    // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, minXCurr, minXPrev, true, windowName);
 
     float temp = 0;
-    // recalculate teh mean on the filtered points
+    // recalculate the mean on the remaining points aftering filtering
     errorsCurr.clear();
     for (auto it = lidarPointsCurrFiltered.begin(); it != lidarPointsCurrFiltered.end(); ++it)
     {
@@ -562,22 +532,27 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     {
         errorsPrev.push_back(it->x);
     }
-    for (auto element : errorsCurr)
+    for (auto element : errorsPrev)
     {
         temp += element;
     }
     double mean_x_prev_filter = temp / errorsPrev.size();
 
+    cout << "------------------means--------------------" << endl;
+    cout << mean_x_curr_filter << " " << mean_x_prev_filter << " " << mean_x_curr << endl;
+
+    // display the resultant lidar points
+    showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr_filter, mean_x_prev_filter, mean_x_curr, true, windowName);
 
     // compute TTC from both measurements
     // TTC = minXCurr * dT / (minXPrev - minXCurr);
     TTC = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
-    double TTCmean = mean_x_curr * dT / (mean_x_prev - mean_x_curr);
-    double TTCmeanfilt = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
 
     bDebug = true;
     if (bDebug)
     {
+        double TTCmean = mean_x_curr * dT / (mean_x_prev - mean_x_curr);
+        double TTCmeanfilt = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
         cout << "TTC: " << TTC << "\tminXCurr: " << minXCurr << "\tminXPrev: " << minXPrev << endl;
         cout << "TTCmean: " << TTCmean << "\tmean_x_curr: " << mean_x_curr << "\tmean_x_prev: " << mean_x_prev << endl;
         cout << "TTCmeanfiltered: " << TTCmeanfilt << "\tmean_x_curr: " << mean_x_curr_filter << "\tmean_x_prev: " << mean_x_prev_filter << endl;
