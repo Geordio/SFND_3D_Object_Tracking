@@ -1,0 +1,19 @@
+---------------------------------
+0, FAST, BRIEF,1, ttclidar: 12.323888, ttccamera: 11.189688
+0, FAST, BRIEF,2, ttclidar: 12.748274, ttccamera: 11.751545
+0, FAST, BRIEF,3, ttclidar: 16.959812, ttccamera: 13.990881
+0, FAST, BRIEF,4, ttclidar: 14.626420, ttccamera: 13.661154
+0, FAST, BRIEF,5, ttclidar: 13.042165, ttccamera: 21.358127
+0, FAST, BRIEF,6, ttclidar: 13.245702, ttccamera: 13.501891
+0, FAST, BRIEF,7, ttclidar: 13.739528, ttccamera: 12.027401
+0, FAST, BRIEF,8, ttclidar: 13.581663, ttccamera: 11.990404
+0, FAST, BRIEF,9, ttclidar: 11.526488, ttccamera: 12.984502
+0, FAST, BRIEF,10, ttclidar: 12.676521, ttccamera: 12.582023
+0, FAST, BRIEF,11, ttclidar: 11.571924, ttccamera: 14.215890
+0, FAST, BRIEF,12, ttclidar: 10.279895, ttccamera: 11.488006
+0, FAST, BRIEF,13, ttclidar: 9.453042, ttccamera: 12.010684
+0, FAST, BRIEF,14, ttclidar: 9.429271, ttccamera: 11.703404
+0, FAST, BRIEF,15, ttclidar: 8.383164, ttccamera: 11.607725
+0, FAST, BRIEF,16, ttclidar: 8.861871, ttccamera: 11.866811
+0, FAST, BRIEF,17, ttclidar: 11.236317, ttccamera: 7.965885
+0, FAST, BRIEF,18, ttclidar: 8.348078, ttccamera: 11.138109

@@ -3,14 +3,13 @@
 
 using namespace std;
 
-    int cnt = 0;
-    bool bSingleLineOp = true;
+int cnt = 0;
+bool bSingleLineOp = false;
 
 // Find best matches for keypoints in two camera images based on several matching methods
 void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource, cv::Mat &descRef,
                       std::vector<cv::DMatch> &matches, std::string descriptorType, std::string matcherType, std::string selectorType)
 {
-        
 
     // configure matcher
     bool crossCheck = false;
@@ -42,7 +41,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         cout << "SEL_NN: total keypoint matches: " << matches.size() << endl;
     }
     else if (selectorType.compare("SEL_KNN") == 0)
-    {   // k nearest neighbors (k=2)
+    { // k nearest neighbors (k=2)
         // from the lesson...
         vector<vector<cv::DMatch>> knn_matches;
         // double t = (double)cv::getTickCount();
@@ -62,13 +61,13 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
             }
         }
         cout << "SEL_KNN: final keypoint matches: " << matches.size();
-        if (!bSingleLineOp) 
+        if (!bSingleLineOp)
             cout << endl;
         else
         {
             cout << ", ";
         }
-        
+
         // cout << "SEL_KNN\t: total keypts matches: " << knn_matches.size() << "\t remaining: "  << matches.size() << endl;
     }
 }
@@ -105,7 +104,6 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     {
         // cout << "AKAZE" << endl;
         extractor = cv::AKAZE::create();
-
     }
     else if (descriptorType.compare("SIFT") == 0)
     {
@@ -124,12 +122,12 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
 
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
     cout << descriptorType << " descriptor extraction time: " << 1000 * t / 1.0 << ", ms"; //<< endl;
-            if (!bSingleLineOp) 
-            cout << endl;
-                    else
-        {
-            cout << ", ";
-        }
+    if (!bSingleLineOp)
+        cout << endl;
+    else
+    {
+        cout << ", ";
+    }
 }
 
 // Detect keypoints in image using the traditional Shi-Thomasi detector
@@ -160,13 +158,13 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool b
         keypoints.push_back(newKeyPoint);
     }
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    cout << "Shi-Tomasi detection. kpts: " << keypoints.size() << ", time:  " << 1000 * t / 1.0 << ", ms" ;//<< endl;
-            if (!bSingleLineOp) 
-            cout << endl;
-                    else
-        {
-            cout << ", ";
-        }
+    cout << "Shi-Tomasi detection. kpts: " << keypoints.size() << ", time:  " << 1000 * t / 1.0 << ", ms"; //<< endl;
+    if (!bSingleLineOp)
+        cout << endl;
+    else
+    {
+        cout << ", ";
+    }
 
     // visualize results - could probably merge to single method to visualise all types
     if (bVis)
@@ -182,7 +180,6 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool b
     // cout << cnt<< endl;
 }
 
-
 // from the lessons...
 void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool bVis)
 {
@@ -197,7 +194,7 @@ void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool
     cv::Mat dst, dst_norm, dst_norm_scaled;
     dst = cv::Mat::zeros(img.size(), CV_32FC1);
     double t = (double)cv::getTickCount();
-    
+
     cv::cornerHarris(img, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
     cv::normalize(dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat());
     cv::convertScaleAbs(dst_norm, dst_norm_scaled);
@@ -249,13 +246,13 @@ void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool
         } // eof loop over cols
     }     // eof loop over rows
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    cout << "Harris detection. kpts: " << keypoints.size() << ", time:  " << 1000 * t / 1.0 << ", ms";// << endl;
-            if (!bSingleLineOp) 
-            cout << endl;
-                    else
-        {
-            cout << ", ";
-        }
+    cout << "Harris detection. kpts: " << keypoints.size() << ", time:  " << 1000 * t / 1.0 << ", ms"; // << endl;
+    if (!bSingleLineOp)
+        cout << endl;
+    else
+    {
+        cout << ", ";
+    }
     // visualize keypoints
     if (bVis)
     {
@@ -311,7 +308,6 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
         cout << "unrecognised detector string" << endl;
     }
 
-
     double t = (double)cv::getTickCount();
 
     // run detector and populate the keypoints variable that was passed as ref
@@ -319,12 +315,12 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
 
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
     cout << detectorType << "detector. kpts: " << keypoints.size() << ", time: " << 1000 * t / 1.0 << ", ms"; // << endl;
-            if (!bSingleLineOp) 
-            cout << endl;
-        else
-        {
-            cout << ", ";
-        }
+    if (!bSingleLineOp)
+        cout << endl;
+    else
+    {
+        cout << ", ";
+    }
 
     // visualize results
     if (bVis)

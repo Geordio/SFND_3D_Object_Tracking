@@ -28,19 +28,22 @@ using namespace std;
 /* MAIN PROGRAM */
 int main(int argc, const char *argv[])
 {
-    // compiler error as no std ctor exists
+
+    bool bStepsOp = true;
+    bool bWaitKey = true;
+    bool bProcessAll = false;
+    bool bSaveImg = false;
+
+// logging
     Logger logger();
-
-    // calls parametrized ctor
     Logger logger1("log.txt");
-
     string logString = "";
 
     /* INIT VARIABLES AND DATA STRUCTURES */
     bool bDebug = true;
     // data location
-    // string dataPath = "../";
-    string dataPath = "";
+    string dataPath = "../";
+    // string dataPath = "";
     // camera
     string imgBasePath = dataPath + "images/";
     string imgPrefix = "KITTI/2011_09_26/image_02/data/000000"; // left camera, color
@@ -118,16 +121,10 @@ int main(int argc, const char *argv[])
     int dataBufferSize = 2;                       // no. of images which are held in memory (ring buffer) at the same time
     // vector<DataFrame> dataBuffer;                 // list of data frames which are held in memory at the same time
     bool bVis = false; // visualize results
-
     /////////////////////////////////////////////
 
-    bool bStepsOp = true;
-    bool bWaitKey = true;
-    bool bProcessAll = false;
-    bool bSaveImg = false;
-    string detectorType = "FAST";                 // SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
-    string descriptorType = "BRIEF";              // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-
+    string detectorType = "FAST";    // SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
+    string descriptorType = "BRIEF"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
     // string detectorType = "SHITOMASI";                 // SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
     // string descriptorType = "SIFT";              // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
 
@@ -195,16 +192,13 @@ int main(int argc, const char *argv[])
             if (desc == "SIFT")
             {
                 descriptorTypeMatching = "DES_HOG";
-                matcherType = "MAT_FLANN";   
+                matcherType = "MAT_FLANN";
             }
             else
             {
                 descriptorTypeMatching = "DES_BINARY";
-                matcherType = "MAT_BF"; 
+                matcherType = "MAT_BF";
             }
-            
-
-            
 
             descriptorType = desc;
             cout << idx << "\t";
@@ -217,8 +211,7 @@ int main(int argc, const char *argv[])
 
             string logCombination = to_string(combinationIdx) + ", " + det + ", " + desc;
             string logString = "";
-            // logger1.WriteLine(to_string(combinationIdx));
-            // logger1.WriteLine(logCombination);
+
             logger1.WriteLine("---------------------------------");
             vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
             /////////////////////////////////////////////
@@ -364,9 +357,6 @@ int main(int argc, const char *argv[])
                     /* MATCH KEYPOINT DESCRIPTORS */
 
                     vector<cv::DMatch> matches;
-                    // string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
-                    // string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
-                    // string selectorType = "SEL_KNN";      // SEL_NN, SEL_KNN
 
                     matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                                      (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
@@ -405,7 +395,6 @@ int main(int argc, const char *argv[])
                                 currBB = &(*it2);
                             }
                         }
-
                         for (auto it2 = (dataBuffer.end() - 2)->boundingBoxes.begin(); it2 != (dataBuffer.end() - 2)->boundingBoxes.end(); ++it2)
                         {
                             if (it1->first == it2->boxID) // check wether current match partner corresponds to this BB
@@ -422,14 +411,35 @@ int main(int argc, const char *argv[])
                             //// STUDENT ASSIGNMENT
                             //// TASK FP.2 -> compute time-to-collision based on Lidar data (implement -> computeTTCLidar)
                             double ttcLidar;
+                            cout << "computeTTCLidar on box: " <<  currBB->boxID << endl;
                             computeTTCLidar(prevBB->lidarPoints, currBB->lidarPoints, sensorFrameRate, ttcLidar);
                             //// EOF STUDENT ASSIGNMENT
 
                             //// STUDENT ASSIGNMENT
                             //// TASK FP.3 -> assign enclosed keypoint matches to bounding box (implement -> clusterKptMatchesWithROI)
                             //// TASK FP.4 -> compute time-to-collision based on camera (implement -> computeTTCCamera)
+
+                            vector<cv::DMatch> discardedMatches;
+
                             double ttcCamera;
-                            clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);
+                            // call overloaded clusterKptMatchesWithROI that returns discarded matches as well.
+                            clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches, discardedMatches);
+                            bVis = false;
+                            // visualise the discarded and retained matches.
+                            if (bVis)
+                            {
+                                cv::Mat img_discarded_matches;
+                                std::vector<char> mask(discardedMatches.size(), 1);
+                                cv::drawMatches((dataBuffer.end() - 2)->cameraImg, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->keypoints, discardedMatches, img_discarded_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), mask, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+                                cv::imshow("Discarded Matches", img_discarded_matches);
+
+                                cv::Mat img_matches;
+                                std::vector<char> mask2(currBB->kptMatches.size(), 1);
+                                cv::drawMatches((dataBuffer.end() - 2)->cameraImg, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, img_matches, cv::Scalar::all(-1), cv::Scalar::all(-1), mask2, cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+                                cv::imshow("Retained Matches", img_matches);
+                                cv::waitKey(0);
+                            } // end of vis
+
                             computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                             //// EOF STUDENT ASSIGNMENT
 
@@ -458,7 +468,7 @@ int main(int argc, const char *argv[])
                                 if (!bProcessAll)
                                 {
                                     cout << "Press key to continue to next frame" << endl;
-                                    cv::waitKey(1);
+                                    cv::waitKey(0);
                                 }
                             }
                             bVis = false;

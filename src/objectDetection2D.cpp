@@ -51,8 +51,6 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
     net.setInput(blob);
     net.forward(netOutput, names);
 
-
-
     // Scan through all bounding boxes and keep only the ones with high confidence
     vector<int> classIds;
     vector<float> confidences;
@@ -102,9 +100,9 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
     }
 
     // show results
+    bVis = false;
     if (bVis)
     {
-
         cv::Mat visImg = img.clone();
         for (auto it = bBoxes.begin(); it != bBoxes.end(); ++it)
         {
@@ -119,7 +117,7 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
 
             // hardcoded debug , only draw the rectangle round the preceeding car
             // estimated car loctaion 625, 255
-            bDebug = false;
+            bDebug = true;
             if (bDebug)
             {
                 if ((*it).roi.contains(cv::Point(625, 255)))
@@ -145,24 +143,14 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
             top = max(top, labelSize.height);
             rectangle(visImg, cv::Point(left, top - round(labelScale * labelSize.height)), cv::Point(left + round(labelScale * labelSize.width), top + baseLine), cv::Scalar(255, 255, 255), cv::FILLED);
             cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, fontScale, cv::Scalar(0, 0, 0), 1);
-            // bDebug = true;
-            // if (bDebug)
-            // {
-            //     if ((*it).roi.contains(cv::Point(625,255)))
-            //     {
-            //     cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, fontScale, cv::Scalar(0,0,0),1);
-            //     }
-            // }
-            // else
-            // {
-            //     cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, fontScale, cv::Scalar(0,0,0),1);
-            // }
+
             bDebug = false;
             if (bDebug)
             {
+
                 if ((*it).roi.contains(cv::Point(625, 255)))
                 {
-                    cout << "target vehicle box ID: " << (*it).boxID << endl;
+                    cout << "target vehicle box ID (based on predefined cords): " << (*it).boxID << endl;
                 }
             }
             bDebug = false;
@@ -172,6 +160,7 @@ void detectObjects(cv::Mat &img, std::vector<BoundingBox> &bBoxes, float confThr
         cv::namedWindow(windowName, 1);
         cv::imshow(windowName, visImg);
 
+        bDebug = false;
         if (bDebug)
         {
             cv::waitKey(0); // wait for key to be pressed

@@ -14,11 +14,11 @@
 using namespace std;
 
 bool bDebug = true;
-bool bfilterViz = true;
+bool bfilterViz = false;
 Logger logger1("log.txt");
 
 // temporary counter for filenaming for report
-int reportCnt = 0;
+int reportCnt = 1; // start at 1 as we only start processing on the 2nd frame (image index =1)
 bool bReport = false;
 
 // Create groups of Lidar points whose projection into the camera falls into the same bounding box
@@ -204,6 +204,7 @@ void plotPoints(cv::Mat &topviewImg, std::vector<LidarPoint> &lidarPoints, cv::S
 // not going to refactor to avoid duplication as only for reporting
 void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, bool bWait, string windowName)
 {
+    cout << "showLidarPoints" << endl;
     // create topview image
     cv::Size imageSize = cv::Size(2000, 2000);
     cv::Size worldSize = cv::Size(3, 12);
@@ -250,6 +251,8 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
     bWait = false;
 }
 
+// overloaded version of showLidarPoints
+// also plots lines showing the x distance that is being used on this frame and previous frame.
 void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, double lineCurr, double linePrev, double lineOrig, bool bWait, string windowName)
 {
     // create topview image
@@ -271,10 +274,11 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
 
     // augment object with some key data
     char str1[200], str2[200];
-    // sprintf(str1, "id=%d, #pts=%d", it1->boxID, (int)it1->lidarPoints.size());
-    putText(topviewImg, str1, cv::Point2f(left - 250, bottom + 50), cv::FONT_ITALIC, 2, currColor);
-    sprintf(str2, "xmin=%2.2f m, yw=%2.2f m", xwmin, ywmax - ywmin);
-    putText(topviewImg, str2, cv::Point2f(left - 250, bottom + 125), cv::FONT_ITALIC, 2, currColor);
+    sprintf(str1, "currx=%f, prevx=%f, deltax=%f", lineCurr, linePrev, linePrev - lineCurr);
+    // sprintf(str1, "test!");
+    putText(topviewImg, str1, cv::Point2f(40, 50), cv::FONT_ITALIC, 1.5, cv::Scalar(0, 0, 0));
+    // sprintf(str2, "xmin=%2.2f m, yw=%2.2f m", xwmin, ywmax - ywmin);
+    // putText(topviewImg, str2, cv::Point2f(left - 250, bottom + 125), cv::FONT_ITALIC, 2, currColor);
 
     // plot distance markers
     float lineSpacing = 2.0; // gap between distance markers
@@ -287,17 +291,19 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
 
     int ycurr = (-lineCurr * imageSize.height / worldSize.height) + imageSize.height;
     int yprev = (-linePrev * imageSize.height / worldSize.height) + imageSize.height;
-    int yorig = (-lineOrig * imageSize.height / worldSize.height) + imageSize.height;
+    // int yorig = (-lineOrig * imageSize.height / worldSize.height) + imageSize.height;
+
     cv::line(topviewImg, cv::Point(0, ycurr), cv::Point(imageSize.width, ycurr), cv::Scalar(0, 255, 0));
     cv::line(topviewImg, cv::Point(0, yprev), cv::Point(imageSize.width, yprev), cv::Scalar(0, 0, 255));
-    cv::line(topviewImg, cv::Point(0, yorig), cv::Point(imageSize.width, yorig), cv::Scalar(245, 66, 230));
+    // dont plot the 3rd line of now
+    // cv::line(topviewImg, cv::Point(0, yorig), cv::Point(imageSize.width, yorig), cv::Scalar(245, 66, 230));
 
     // resized image as wasnt visible on my setup
     cv::namedWindow(windowName, cv::WINDOW_NORMAL);
     cv::imshow(windowName, topviewImg);
     cv::resizeWindow(windowName, 600, 600);
 
-    bReport = true;
+    // bReport = false;
     if (bReport)
     {
 
@@ -315,31 +321,35 @@ void showLidarPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoin
 
 void calculateSD(vector<float> data, float &stddev, float &var, float &mean)
 {
-    float sum = 0.0, standardDeviation = 0.0;
+    float sum = 0.0;
     float sumOfDiff = 0;
 
     stddev = 0;
     var = 0;
     for (auto element : data)
     {
+        // cout << "ele: " << element << endl;
         sum += element;
     }
-
     mean = sum / data.size();
-    cout << "mean: " << mean << endl;
+
+    // cout << "mean: " << mean << "sum: " << sum<< endl;
     for (auto element : data)
     {
         sumOfDiff += pow(element - mean, 2);
     }
     var = sumOfDiff / data.size();
     stddev = sqrt(var);
+
+    cout << "calculateSD Debug: data.size(): " << data.size() << " stddev:" << stddev << " var: "
+         << " " << var << " mean: " << mean << endl;
 }
 
 // associate a given bounding box with the keypoints it contains
-void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
+void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches, std::vector<cv::DMatch> &filteredMatches)
 {
     // initial analysis of the how the matched points relate to each other
-
+    cout << "clusterKptMatchesWithROI" << endl;
     float var = 0;
     float stddev = 0;
     float mean = 0;
@@ -348,48 +358,49 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
     if (bDebug)
         cv::waitKey(0);
 
-    // float point_euc_dist = 0;
-    float sum_euc_dist = 0;
-    vector<float> errors;
-
-    // iterate over the kptMatches, calculating the euclidean distance between the corresponding keypoint matches
-    for (auto match : kptMatches)
-    {
-        // filtering
-        // calculate the euclidean distance between the matched points..
-        cv::Point2f diff = kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt;
-        float point_euc_dist = cv::sqrt(diff.x * diff.x + diff.y * diff.y);
-        // sum_euc_dist += point_euc_dist;
-        errors.push_back(point_euc_dist);
-    }
-
-    calculateSD(errors, stddev, var, mean);
-    cout << "SD: " << stddev << " ," << var << endl;
+    vector<float> vecEucDists;
 
     bDebug = false;
     if (bDebug)
         cv::waitKey(0);
 
-    double threshold = 2.5 * stddev;
-
-    // iterate over the matches again, this time filter and allocate the points to the corresponding bounding box
-
-    // TODO The std deviation is over all matches not the ones in each box...... ffs SORT THIS OUT
+    // add all the points, then erase the ones that are outside the threshold
+    // allocate the points to the boxes, without filtering
+    // calculate the cumlative sum of the euclidean distances to enable calculation of the mean
     for (auto match : kptMatches)
     {
-        // filtering
-        // calculate the euclidean distance between the matched points..
-        cv::Point2f diff = kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt;
-        float euclidean_dist = cv::sqrt(diff.x * diff.x + diff.y * diff.y);
-
-        // if (euclidean_dist < )
-        if (abs(euclidean_dist - mean) <= threshold)
+        if (boundingBox.roi.contains(kptsCurr[match.trainIdx].pt))
         {
-            if (boundingBox.roi.contains(kptsCurr[match.trainIdx].pt))
-            {
-                boundingBox.keypoints.push_back(kptsCurr[match.trainIdx]);
-                boundingBox.kptMatches.push_back(match);
-            }
+            boundingBox.keypoints.push_back(kptsCurr[match.trainIdx]);
+            boundingBox.kptMatches.push_back(match);
+
+            cv::Point2f diff = kptsCurr[match.trainIdx].pt - kptsPrev[match.queryIdx].pt;
+            float euclidean_dist = cv::sqrt(diff.x * diff.x + diff.y * diff.y);
+            // cout << "euc " << euclidean_dist << " " << diff.x << " " << diff.y<< endl;
+            vecEucDists.push_back(euclidean_dist);
+        }
+    }
+
+    calculateSD(vecEucDists, stddev, var, mean);
+    cout << "SD: " << stddev << " ," << var << endl;
+    double threshold = 2.5 * stddev;
+
+    // TODO SOMETHING GOING WRONG HERE?
+    for (int idx = 0; idx < boundingBox.keypoints.size();)
+    {
+        // if (abs(vecEucDists[idx] - mean) > threshold)
+        if ((vecEucDists[idx] - mean) > threshold)
+        {
+            // if the entry was erases we dont need to increment the index
+            cout << "erasing outlier: " << idx << endl;
+            filteredMatches.push_back(boundingBox.kptMatches[idx]);
+            vecEucDists.erase(vecEucDists.begin() + idx);
+            boundingBox.keypoints.erase(boundingBox.keypoints.begin() + idx);
+            boundingBox.kptMatches.erase(boundingBox.kptMatches.begin() + idx);
+        }
+        else
+        {
+            idx++;
         }
     }
 }
@@ -399,6 +410,8 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
     // compute distance ratios between all matched keypoints
+
+    cout << "computeTTCCamera" << endl;
     vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
     for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
     { // outer kpt. loop
@@ -407,7 +420,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
 
         for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
-        {                           // inner kpt.-loop
+        {
             double minDist = 100.0; // min. required distance
 
             // get next keypoint and its matched partner in the prev. frame
@@ -433,17 +446,23 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         return;
     }
 
-    // STUDENT TASK (replacement for meanDistRatio)
+    // use the median distance ratio instead of mean
     std::sort(distRatios.begin(), distRatios.end());
     long medIndex = floor(distRatios.size() / 2.0);
-    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex]; // compute median dist. ratio to remove outlier influence
+    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex];
 
     double dT = 1 / frameRate;
     TTC = -dT / (1 - medDistRatio);
-    // EOF STUDENT TASK
+
+    bDebug = true;
+    if (bDebug)
+    {
+        cout << "medDistRatio: " << medDistRatio << ", TTC: " << TTC << endl;
+    }
 }
 
-/// Filters Lidar points using a passed standard deviation
+// Filters Lidar points using a passed standard deviation
+// also passes the minimum x value as a reference
 void filterPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> &lidarPointsFiltered, float mean_x, float sd, double &minX)
 {
     double minXPrev = 1e9;
@@ -463,43 +482,44 @@ void filterPoints(std::vector<LidarPoint> &lidarPoints, std::vector<LidarPoint> 
                 cout << "outlier: " << it->x << endl;
         }
     }
-    cout << "filtered points size: " << lidarPointsFiltered.size() << "minX: " << minX << endl;
+    bDebug = false;
+    if (bDebug)
+        cout << "filtered points size: " << lidarPointsFiltered.size() << ", minX: " << minX << endl;
 }
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-
+    cout << "computeTTCLidar" << endl;
     float var = 0;
     float sd_curr = 0;
     float sd_prev = 0;
     float mean_x_prev = 0;
     float mean_x_curr = 0;
     float sum_x = 0;
+    bDebug = false;
     //
     vector<float> errorsCurr;
-    // make vector of the x distances for current frame
+    // make vector of the x distances for current frame to use to calculate the mean and std dev
     for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
     {
         errorsCurr.push_back(it->x);
     }
     calculateSD(errorsCurr, sd_curr, var, mean_x_curr);
-    cout << "refactored mean x: " << mean_x_curr << ", stddev: " << sd_curr << endl;
 
+    // do the same for the previous frame lidar points
     vector<float> errorsPrev;
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
     {
         errorsPrev.push_back(it->x);
     }
     calculateSD(errorsPrev, sd_prev, var, mean_x_prev);
-    bDebug = false;
 
     // auxiliary variables
     double dT = 0.1;        // time between two measurements in seconds
     double laneWidth = 4.0; // assumed width of the ego lane
 
     // find closest distance to Lidar points within ego lane
-
     double minXPrev = 1e9, minXCurr = 1e9;
 
     // create new vectors to store the filtered points.
@@ -510,47 +530,42 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     // run filtering to remover outliers
     filterPoints(lidarPointsPrev, lidarPointsPrevFiltered, mean_x_prev, sd_prev, minXPrev);
     filterPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr, sd_curr, minXCurr);
-    string windowName = "LIDAR POINTS - curr";
+    
     // showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, minXCurr, minXPrev, true, windowName);
 
-    float temp = 0;
     // recalculate the mean on the remaining points aftering filtering
     errorsCurr.clear();
     for (auto it = lidarPointsCurrFiltered.begin(); it != lidarPointsCurrFiltered.end(); ++it)
     {
         errorsCurr.push_back(it->x);
+        sum_x += it->x;
     }
-    for (auto element : errorsCurr)
-    {
-        temp += element;
-    }
-    double mean_x_curr_filter = temp / errorsCurr.size();
+    double mean_x_curr_filter = sum_x / errorsCurr.size();
 
-    temp = 0;
+    sum_x = 0;
     errorsPrev.clear();
     for (auto it = lidarPointsPrevFiltered.begin(); it != lidarPointsPrevFiltered.end(); ++it)
     {
         errorsPrev.push_back(it->x);
+        sum_x += it->x;
     }
-    for (auto element : errorsPrev)
+    double mean_x_prev_filter = sum_x / errorsPrev.size();
+
+    if (bDebug)
     {
-        temp += element;
+        // display the resultant lidar points
+        string windowName = "LIDAR POINTS - curr";
+        showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr_filter, mean_x_prev_filter, mean_x_curr, true, windowName);
     }
-    double mean_x_prev_filter = temp / errorsPrev.size();
-
-    cout << "------------------means--------------------" << endl;
-    cout << mean_x_curr_filter << " " << mean_x_prev_filter << " " << mean_x_curr << endl;
-
-    // display the resultant lidar points
-    showLidarPoints(lidarPointsCurr, lidarPointsCurrFiltered, mean_x_curr_filter, mean_x_prev_filter, mean_x_curr, true, windowName);
 
     // compute TTC from both measurements
     // TTC = minXCurr * dT / (minXPrev - minXCurr);
     TTC = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
 
-    bDebug = true;
+    bDebug = false;
     if (bDebug)
     {
+        cout << "TTCLidarDebugging" << endl;
         double TTCmean = mean_x_curr * dT / (mean_x_prev - mean_x_curr);
         double TTCmeanfilt = mean_x_curr_filter * dT / (mean_x_prev_filter - mean_x_curr_filter);
         cout << "TTC: " << TTC << "\tminXCurr: " << minXCurr << "\tminXPrev: " << minXPrev << endl;
@@ -561,19 +576,9 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
-    // initial thoughts
-    //
-    // iterate over the matches
-    // for each match, check which bounding box its its contained in.
-    // OR??? iterate over each DataFrame.boundingbox, and iterate over the keypoints in each bounding box.
-    // Is there any real difference to this? Performance or handling outliers / anomalies?
-    // how to handle anomalies?
-    // for each bounding box, create a list of indexes of possible matching bboxes. the one with the most matches will be the likely one.
-
     // trainIdx : current frame
     // query: previous
-    cout << "-------------------------------------------" << endl;
+    cout << "matchBoundingBoxes" << endl;
     // some initial debugging
     if (bDebug)
     {
@@ -585,16 +590,16 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     }
 
     int match_idx = 0;
-
     int mostMatches = 0;
-    cout << "--------------REVISED-----------" << endl;
 
-    // create a 2 d vector that can be used to count the matches of each combination of bounding boxes
+    // create a 2d vector that can be used to count the matches of each combination of bounding boxes
+    // each row will represent a box in current frame, each col will represent a box in prev frame.
+    // then the cells will hold the value of the count of matches for that curr frame box and pre frame box
     vector<int> pfBoxMatches(prevFrame.boundingBoxes.size(), 0);
     // 2d vector  vector (rowSize, vector(columnsize, init value))
     vector<vector<int>> vecOfMatchCnts(currFrame.boundingBoxes.size(), pfBoxMatches);
 
-    cout << "vecOfMatchCnts size: " << vecOfMatchCnts.size() << ", " << vecOfMatchCnts[0].size() << endl;
+    cout << "vecOfMatchCnts size: " << vecOfMatchCnts.size() << "(curr), " << vecOfMatchCnts[0].size() << "(prev)" << endl;
     bDebug = false;
     if (bDebug)
         cv::waitKey(0);
@@ -626,6 +631,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     bDebug = false;
     if (bDebug)
     {
+        cout << "table of matches (each row represents a box in current fream, each column a box in prev frame. row 0, col 3 is curr box 0, prev box 3 matches)" << endl;
         // vector<vector<int>> vecOfMatchCnts(currFrame.boundingBoxes.size(), vector<int>(prevFrame.boundingBoxes.size(), 0));        cout << "-------------------------" << endl;
         for (int i = 0; i < currFrame.boundingBoxes.size(); i++)
         {
@@ -638,19 +644,47 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
         cv::waitKey(0);
     }
     // iterate through the count of matches for boxes in the current frame
-    // find index of the max value of counts in the 2d vector
-    cout << "cf box\tpf box\tcount" << endl;
-    for (int i = 0; i < currFrame.boundingBoxes.size(); i++)
+    // loop hrough the current boxes
+    for (int cfBoxIdx = 0; cfBoxIdx < currFrame.boundingBoxes.size(); cfBoxIdx++)
     {
-        int maxValIndex = std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end()) - vecOfMatchCnts[i].begin();
-        int maxValue = *std::max_element(vecOfMatchCnts[i].begin(), vecOfMatchCnts[i].end());
-        // bbBestMatches.insert(pair<int, int>(i, maxValIndex));
-        bbBestMatches.insert(pair<int, int>(maxValIndex, i));
-        if (bDebug)
+        // set up variables to track best matches
+        int pfBoxMatchCnt = -1;
+        int pfBoxBestMatchIdx = -1;
+        // for each current box check which pf box has most matches
+        for (int pfBoxIdx = 0; pfBoxIdx < prevFrame.boundingBoxes.size(); pfBoxIdx++)
         {
-            cout << i << "\t" << maxValIndex << "\t" << maxValue << endl;
+            // cout << "\t(" << vecOfMatchCnts[cfBoxIdx][pfBoxIdx] << ")\t";
+            if (vecOfMatchCnts[cfBoxIdx][pfBoxIdx] > pfBoxMatchCnt)
+            {
+                pfBoxMatchCnt = vecOfMatchCnts[cfBoxIdx][pfBoxIdx];
+                pfBoxBestMatchIdx = pfBoxIdx;
+            }
+            cout << vecOfMatchCnts[cfBoxIdx][pfBoxIdx] << "\t";
+        }
+        // cout << "cfBox: " << cfBoxIdx << " matches pfBox: " << pfBoxBestMatchIdx << endl;
+
+        // Note, there is an issue where 1 pf box matches more than 1 cf box, so only add as a matched box, if the tracking works both ways
+        // ie check if the pf box has the greatest count of matches with the same cf box
+        int cfBoxMatchCnt = -1;
+        int pfBoxTocFBoxCheckIdx = -1;
+        // check if this matching pfBox matches some other cFBox better. loop through currentframe boxes
+        for (int cfBoxChkIdx = 0; cfBoxChkIdx < currFrame.boundingBoxes.size(); cfBoxChkIdx++)
+        {
+            if (vecOfMatchCnts[cfBoxChkIdx][pfBoxBestMatchIdx] > cfBoxMatchCnt)
+            {
+                cfBoxMatchCnt = vecOfMatchCnts[cfBoxChkIdx][pfBoxBestMatchIdx];
+                pfBoxTocFBoxCheckIdx = cfBoxChkIdx;
+            }
+            // cout << vecOfMatchCnts[cfBoxIdx][pfBoxIdx] << "\t";
+        }
+        // if the boxes match in both directions add as a pair
+        if (cfBoxIdx == pfBoxTocFBoxCheckIdx)
+        {
+            // cout << "cfBox: " << cfBoxIdx << " best matches pfBox: " << pfBoxTocFBoxCheckIdx << endl;
+            bbBestMatches.insert(pair<int, int>(pfBoxBestMatchIdx, cfBoxIdx));
         }
     }
+
     bDebug = false;
     if (bDebug)
         cv::waitKey(0);
