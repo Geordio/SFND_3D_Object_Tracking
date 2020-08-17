@@ -402,7 +402,7 @@ int main(int argc, const char *argv[])
                                 prevBB = &(*it2);
                             }
                         }
-                        cout << "currBox: " << currBB->boxID << " ,prevBox: " << prevBB->boxID << endl;
+                        // cout << "currBox: " << currBB->boxID << " ,prevBox: " << prevBB->boxID << endl;
 
                         // compute TTC for current match
                         // this limits it to the lead vehicle as that is the only object represented by LIDAR points
@@ -411,7 +411,7 @@ int main(int argc, const char *argv[])
                             //// STUDENT ASSIGNMENT
                             //// TASK FP.2 -> compute time-to-collision based on Lidar data (implement -> computeTTCLidar)
                             double ttcLidar;
-                            cout << "computeTTCLidar on box: " <<  currBB->boxID << endl;
+                            // cout << "computeTTCLidar on box: " <<  currBB->boxID << endl;
                             computeTTCLidar(prevBB->lidarPoints, currBB->lidarPoints, sensorFrameRate, ttcLidar);
                             //// EOF STUDENT ASSIGNMENT
 

@@ -13,7 +13,7 @@
 
 using namespace std;
 
-bool bDebug = true;
+bool bDebug = false;
 bool bfilterViz = false;
 Logger logger1("log.txt");
 
@@ -341,8 +341,11 @@ void calculateSD(vector<float> data, float &stddev, float &var, float &mean)
     var = sumOfDiff / data.size();
     stddev = sqrt(var);
 
+    if (bDebug)
+    {
     cout << "calculateSD Debug: data.size(): " << data.size() << " stddev:" << stddev << " var: "
          << " " << var << " mean: " << mean << endl;
+    }
 }
 
 // associate a given bounding box with the keypoints it contains
@@ -382,7 +385,7 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
     }
 
     calculateSD(vecEucDists, stddev, var, mean);
-    cout << "SD: " << stddev << " ," << var << endl;
+    
     double threshold = 2.5 * stddev;
 
     // TODO SOMETHING GOING WRONG HERE?
@@ -454,7 +457,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     double dT = 1 / frameRate;
     TTC = -dT / (1 - medDistRatio);
 
-    bDebug = true;
+    bDebug = false;
     if (bDebug)
     {
         cout << "medDistRatio: " << medDistRatio << ", TTC: " << TTC << endl;
