@@ -115,16 +115,20 @@ The LIDAR plots of these 2 frames are shown below.
 Note that the outliers are sucessfully removed in both. The change in mean appears to be the result of the current fram having a higher density of points further away from our ego vehicle, whereas the proceeding frame has a relatively higher density on the edge of the cloud nearer our vehicle. (if you look at the 2nd image blow, you can see that the points in the centre of the inner bounding box are almost continuous as they are density grouped)
 Note that the red horizontal line shows the mean x on the previous frame, the green line on the current frame. The closer these lines are together, the less the relative distance between the ego and lead car has changed.
 ![filtered Lidar](/supporting/filteredLidar/lidar_points2_cropped.jpg)
-frame 2 lidar points
+*frame 2 lidar points  (previous frame)*
+
 ![filtered Lidar](/supporting/filteredLidar/lidar_points3_cropped.jpg)
+*frame 3 lidar points  (current frame)*
 
 
 The second example I have chosen shows a similar issue.
 For frame 17, the TTC jumps up to 11s when it has been decreasing on the previous frames
 My looking at the top down views below, you can see that the distribution of the points has changed, on frame 16, the distribution had an obvious curve, with points in the centre of the y axis being closer to the ego vehicle than the edges, wherease on 17 the curve is less pronouced, with more points distributed more evenly. This effects the mean of the x, making it further away from the ego car, and hence increasing the ttc.
 ![filtered Lidar](/supporting/filteredLidar/lidar_points16_cropped.jpg)
+*frame 16 lidar points  (previous frame)*
 
 ![filtered Lidar](/supporting/filteredLidar/lidar_points17_cropped.jpg)
+*frame 17 lidar points  (current frame)*
 
 Both of these issues could be caused by the rear surface of the lead vehicle not being flat, and changes in the relative poistion of the 2 vehicles to each other, such as the road not being flat, and changes to the pitch of the ego vehicle caused by acceleration and braking. This means that subtly different points on the lead vehicle are detected, changing the overal point distribution.
 
@@ -153,3 +157,9 @@ The image below shows a significant number of keypoints detected off the vehicle
 ![Adjacent Keypoints](/supporting/adjacent_veh_kpts.png)
 
 This could be handled better my also reducing the size of the bounding box for camera keypoints. The current implementation only reduces the size of the Lidar points.
+
+
+### Note: the yolo weights data file is too large to be stored and pulled from git. To get the file use:
+```   
+wget https://pjreddie.com/media/files/yolov3.weights
+```
